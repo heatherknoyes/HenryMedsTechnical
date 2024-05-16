@@ -25,7 +25,7 @@ class ReservationHandler(@Autowired private val reservationsDao: ReservationsDao
     fun confirmReservation(@RequestBody reservation: ReservationRequest) {
         return reservationsDao.confirmReservation(
             Reservation(
-                id = "${reservation.doctor}:${LocalDate.now()}:${LocalTime.now()}",
+                id = "${reservation.doctor}:${reservation.day}:${reservation.time}",
                 doctorName = reservation.doctor,
                 patientName = reservation.patient,
                 appointmentTime = reservation.time,
@@ -41,15 +41,17 @@ class ReservationHandler(@Autowired private val reservationsDao: ReservationsDao
     @PutMapping("/new_reservation")
     fun insertReservation(@RequestBody reservation: ReservationRequest): Reservation? {
         val foundReservation = reservationsDao.getReservation("${reservation.doctor}:${reservation.day}:${reservation.time}")
-        return if (foundReservation?.confirmed == true) {
-            Reservation(
-                id = "${reservation.doctor}:${LocalDate.now()}:${LocalTime.now()}",
+        return if (foundReservation?.confirmed != true && foundReservation?.bookingInProcess != true) {
+            val returnedReservation = Reservation(
+                id = "${reservation.doctor}:${reservation.day}:${reservation.time}",
                 doctorName = reservation.doctor,
                 patientName = reservation.patient,
                 appointmentTime = reservation.time,
                 appointmentDate = reservation.day,
                 bookingInProcess = true
             )
+            reservationsDao.save(returnedReservation)
+            returnedReservation
         } else { null }
     }
 }

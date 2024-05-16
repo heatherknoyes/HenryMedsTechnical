@@ -40,8 +40,11 @@ class ReservationHandler(@Autowired private val reservationsDao: ReservationsDao
     // override another patient
     @PutMapping("/new_reservation")
     fun insertReservation(@RequestBody reservation: ReservationRequest): Reservation? {
+        val currentTime = LocalTime.now().plusHours(24)
         val foundReservation = reservationsDao.getReservation("${reservation.doctor}:${reservation.day}:${reservation.time}")
-        return if (foundReservation?.confirmed != true && foundReservation?.bookingInProcess != true) {
+        return if (foundReservation?.confirmed != true
+            && foundReservation?.bookingInProcess != true
+            && currentTime < reservation.time) {
             val returnedReservation = Reservation(
                 id = "${reservation.doctor}:${reservation.day}:${reservation.time}",
                 doctorName = reservation.doctor,

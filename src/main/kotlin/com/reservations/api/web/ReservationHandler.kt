@@ -1,6 +1,9 @@
 package com.reservations.api.web
 
+import com.reservations.api.dao.ReservationsDao
 import com.reservations.api.models.Reservation
+import com.reservations.api.models.ReservationRequest
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -12,37 +15,41 @@ import java.time.LocalTime
 
 
 @RestController
-class ReservationHandler {
+class ReservationHandler(@Autowired private val reservationsDao: ReservationsDao) {
     @GetMapping("/reservations")
-    fun getReservation(): List<Reservation> {
-        return listOf(
+    fun getReservation(): List<Reservation?> {
+        return reservationsDao.getAllOpenReservations()
+    }
+
+    @PutMapping("/confirm_reservation")
+    fun confirmReservation(@RequestBody reservation: ReservationRequest) {
+        return reservationsDao.confirmReservation(
             Reservation(
-                id = "Dood:${LocalDate.now()}:${LocalTime.now()}",
-                doctorName = "Dood",
-                patientName = "Chris",
-                appointmentTime = LocalTime.now(),
-                appointmentDate = LocalDate.now()
+                id = "${reservation.doctor}:${LocalDate.now()}:${LocalTime.now()}",
+                doctorName = reservation.doctor,
+                patientName = reservation.patient,
+                appointmentTime = reservation.time,
+                appointmentDate = reservation.day,
+                confirmed = true
             )
         )
     }
 
-    @PutMapping("/newReservation")
-    fun insertReservation(@RequestBody reservation: Reservation): Reservation? {
-        return if (reservation.doctorName == "Dood") {
+    // Note: with more time I would adjust for time and make sure that the user is requesting a truly available time
+    // I would also check that they aren't requesting an appointment time that is already taken as right now it would
+    // override another patient
+    @PutMapping("/new_reservation")
+    fun insertReservation(@RequestBody reservation: ReservationRequest): Reservation? {
+        val foundReservation = reservationsDao.getReservation("${reservation.doctor}:${reservation.day}:${reservation.time}")
+        return if (foundReservation?.confirmed == true) {
             Reservation(
-                id = "Dood:${LocalDate.now()}:${LocalTime.now()}",
-                doctorName = reservation.doctorName,
-                patientName = reservation.patientName,
-                appointmentTime = reservation.appointmentTime,
-                appointmentDate = reservation.appointmentDate
+                id = "${reservation.doctor}:${LocalDate.now()}:${LocalTime.now()}",
+                doctorName = reservation.doctor,
+                patientName = reservation.patient,
+                appointmentTime = reservation.time,
+                appointmentDate = reservation.day,
+                bookingInProcess = true
             )
         } else { null }
     }
-
-//    fun deleteAppointment(reservation: Reservation) {
-//        if (reservation.confirmed == false &&
-//            Duration.between(Instant.now(), reservation.requestedTime).toMinutes() > 30 ) {
-//            // delete this appointment
-//        }
-//    }
 }
